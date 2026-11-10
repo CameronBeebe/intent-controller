@@ -1,3 +1,14 @@
+# Intent Controller
+
+Intent Controller is a harness mod for [Hermes Agent](https://github.com/NousResearch/hermes-agent), maintained as a fork. It adds opt-in checks for how an agent gathers context. It can require the agent to state why it is reading a file and use Jev to assess whether the returned text helps with that objective and the user's task. It also includes a standalone preview for inspecting which passages a context selector keeps or omits.
+
+The file read features are off by default and can be enabled independently.
+
+- [Declared intent and read assessment](website/docs/developer-guide/read-assessment.md)
+- [Context preview](scripts/CONTEXT_MAP.md)
+
+---
+
 <p align="center">
   <img src="assets/banner.png" alt="Hermes Agent" width="100%">
 </p>
