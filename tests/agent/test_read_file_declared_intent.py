@@ -96,7 +96,9 @@ def test_missing_intent_is_rejected_before_file_reader(tmp_path, mode, intent):
 
 @pytest.mark.parametrize("mode", ["sequential", "concurrent"])
 def test_real_reads_keep_intents_in_hooks_and_sqlite_but_not_display(tmp_path, monkeypatch, mode):
-    from hermes_state import SessionDB
+    from persistence_assembly import open_persistence, open_persistence_reader, profile_scope
+    from tests.fixtures.storage_read import conversation
+    from tests.fixtures.storage_seed import seed_session
     from hermes_cli.plugins import get_plugin_manager
     from agent.display import build_tool_preview, redact_tool_args_for_display
 
@@ -104,9 +106,10 @@ def test_real_reads_keep_intents_in_hooks_and_sqlite_but_not_display(tmp_path, m
     agent = _agent()
     monkeypatch.setattr("agent.title_generator.maybe_auto_title", lambda *a, **k: None)
     db_path = tmp_path / "state.db"
-    db = SessionDB(db_path=db_path)
-    db.create_session(session_id="intent-session", source="cli", model="test/model")
-    agent._session_db, agent._session_db_created, agent.session_id = db, True, "intent-session"
+    db = open_persistence(profile_scope(home=tmp_path))
+    seed_session(db, "intent-session", "cli", model="test/model")
+    agent._session_db = agent.persistence = db
+    agent._session_db_created, agent.session_id = True, "intent-session"
     agent._last_flushed_db_idx = 0
     agent._flushed_db_message_ids = set()
     agent._flushed_db_message_session_id = None
@@ -125,11 +128,8 @@ def test_real_reads_keep_intents_in_hooks_and_sqlite_but_not_display(tmp_path, m
         messages = _execute(agent, calls, mode)
     finally:
         db.close()
-    with_db = SessionDB(db_path=db_path)
-    try:
-        durable = with_db.get_messages_as_conversation("intent-session")
-    finally:
-        with_db.close()
+    with open_persistence_reader(db_path) as with_db:
+        durable = conversation(with_db, "intent-session")
     for i, call in enumerate(durable[1]["tool_calls"]):
         assert json.loads(call["function"]["arguments"]) == calls[i]
     results = [m for m in durable if m["role"] == "tool"]

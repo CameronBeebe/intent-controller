@@ -209,7 +209,9 @@ def test_profile_scoped_key_and_home_survive_classifier_thread(tmp_path, monkeyp
 
 
 def test_assessment_is_not_added_to_sqlite_conversation(tmp_path, monkeypatch):
-    from hermes_state import SessionDB
+    from persistence_assembly import open_persistence, profile_scope
+    from tests.fixtures.storage_read import conversation
+    from tests.fixtures.storage_seed import seed_session
     from agent import read_assessment_typesafe as adapter
     configure(display=False)
     monkeypatch.setenv("TYPESAFE_API_KEY", "synthetic")
@@ -218,9 +220,10 @@ def test_assessment_is_not_added_to_sqlite_conversation(tmp_path, monkeypatch):
     monkeypatch.setattr(adapter, "http_client", lambda **kw: real_client(transport=httpx.MockTransport(
         lambda req: httpx.Response(200, json=response())), **kw))
     agent = _agent()
-    db = SessionDB(db_path=tmp_path / "state.db")
-    db.create_session(session_id="assessment-session", source="cli", model="test/model")
-    agent._session_db, agent._session_db_created, agent.session_id = db, True, "assessment-session"
+    db = open_persistence(profile_scope(home=tmp_path))
+    seed_session(db, "assessment-session", "cli", model="test/model")
+    agent._session_db = agent.persistence = db
+    agent._session_db_created, agent.session_id = True, "assessment-session"
     agent._last_flushed_db_idx = 0
     agent._flushed_db_message_ids = set()
     agent._flushed_db_message_session_id = None
@@ -229,7 +232,7 @@ def test_assessment_is_not_added_to_sqlite_conversation(tmp_path, monkeypatch):
     path.write_text("fixture")
     try:
         _execute(agent, [{"path": str(path), "declared_intent": "Inspect fixture"}])
-        durable = db.get_messages_as_conversation("assessment-session")
+        durable = conversation(db, "assessment-session")
     finally:
         db.close()
     assert len(durable) == 3
