@@ -7,6 +7,10 @@ The file read features are off by default and can be enabled independently.
 - [Declared intent and read assessment](website/docs/developer-guide/read-assessment.md)
 - [Context preview](scripts/CONTEXT_MAP.md)
 
+## Related work
+
+- [pstack](https://x.ai/bot/plugin/9717366) by [@poteto](https://x.com/poteto) ships `/reframe` ([announcement](https://x.com/poteto/status/2125029185379008573)) and `/sharpen`, prompt-side skills for when the operator knows what they want but can't yet say it: `/reframe` teaches the expert vocabulary for the task and rewrites the prompt in it, and `/sharpen` makes the task deeper before rewriting it. Intent Controller works on the other side of the loop: it makes the agent declare *its* intent for each read and checks whether the returned context serves it. A possible experiment is to pass a reframed or sharpened task statement as the objective that read assessment scores against, and see whether context selection improves.
+
 ---
 
 <p align="center">
