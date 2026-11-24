@@ -51,6 +51,14 @@ class InMemoryStateMetaRepository:
         require_key(key)
         state_meta_table(self._backend, scope)[key] = value
 
+    def compare_and_set(self, key: str, expected: Optional[str], value: str) -> bool:
+        require_key(key)
+        table = state_meta_table(self._backend, self._backend.scope)
+        if table.get(key) != expected:
+            return False
+        table[key] = value
+        return True
+
     def list_prefix(self, prefix: str) -> tuple[StateMetaEntry, ...]:
         scope = self._backend.scope
         require_key(prefix)

@@ -22,6 +22,7 @@ from storage_user_copy import error_type_name
 from persistence.core.errors import AuthorityRefusal
 
 _CALLS = {
+    "intent": frozenset({"command"}),
     "goal": frozenset({"state", "set", "pause", "resume", "clear", "mark_done", "add_subgoal", "remove_subgoal",
                        "clear_subgoals", "add_gate", "remove_gate", "clear_gates", "wait_on", "wait_on_session",
                        "wait_for_seconds", "stop_waiting", "is_waiting", "evaluate_after_turn", "command"}),
@@ -153,7 +154,8 @@ async def automation(connection, ref, params):
     target = physical_target(authority, ref)
     if not hasattr(authority, "viewer_automation"):
         authority.viewer_automation = {}
-    authority.viewer_automation[ref.session_id] = connection
+    if kind != "intent":
+        authority.viewer_automation[ref.session_id] = connection
     runner = authority.runner
     home = Path(authority.profile_id)
 
@@ -161,6 +163,16 @@ async def automation(connection, ref, params):
         from gateway.run import _profile_runtime_scope
         from gateway.session_commands import _session_workspace
         with _profile_runtime_scope(home), _session_workspace(runner, live.source):
+            if kind == "intent":
+                from agent.intent_attractor import IntentStore
+                if kwargs or len(args) > 1 or (args and not isinstance(args[0], str)):
+                    raise AuthorityRefusal("invalid_params")
+                from hermes_cli.intent_command import IntentCommandError
+                try:
+                    value = IntentStore(authority_persistence(authority), target).command(args[0] if args else '')
+                except IntentCommandError as exc:
+                    return {"error": {"type": "IntentCommandError", "message": str(exc)}, "state": None}
+                return {"value": value, "state": None}
             return invoke(runner, kind, target, call, args, kwargs)
     from gateway.session_persistence import authority_persistence
     meta = authority_persistence(authority).state_meta

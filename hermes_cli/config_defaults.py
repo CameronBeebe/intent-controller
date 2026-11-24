@@ -64,6 +64,9 @@ DEFAULT_CONFIG = {
     "agent": {
         "read_file_declared_intent": False,  # Session-static metadata, not access control.
         "read_assessment": {"enabled": False, "provider": "", "model": ""},  # Explicit export opt-in.
+        "intent_attractor": {"enabled": False, "provider": "", "model": "",
+                             "judge_enabled": True, "semantic_continuation": True,
+                             "max_continuations": 2, "max_assessments": None, "feedback_interval": 1},
         # Turn cap: null/"none"/"unlimited"/"inf"/0/-1 = unlimited; positive int caps (resolve_turn_limit).
         "max_turns": None,
         # Optional one-time model-visible checkpoint warning before a finite turn cap is exhausted.

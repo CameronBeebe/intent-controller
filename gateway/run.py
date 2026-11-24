@@ -1122,6 +1122,7 @@ def _build_replay_entry(
     send no ``reasoning_content`` at all on the next turn, which can cause HTTP 400 from strict thinking
     providers.
     """
+    import copy
     entry: dict[str, Any] = {"role": role, "content": content}
     # api_content sidecar keeps the request prefix byte-stable — ONLY if this pipeline did not rewrite
     # content. The caller renders timestamps AFTER this check so a stamp alone never drops the sidecar.
@@ -1143,6 +1144,11 @@ def _build_replay_entry(
     if preserve_timestamp and msg.get("timestamp"):
         entry["timestamp"] = msg["timestamp"]
     entry.update(replay_metadata_fields(msg))  # a proactive prune re-persists this view: keep flags and stamp
+    # This is an internal replay, not a provider wire projection. Keep producer
+    # provenance/source evidence; wire assembly strips these fields later.
+    for key in ('display_kind', 'display_metadata'):
+        if key in msg:
+            entry[key] = copy.deepcopy(msg[key])
     # Replay rebuilds the SAME conversation: every role keeps its uid and merge witness, so a context engine sees the
     # uids the store holds. Tool-call uid maps stay on rows that still carry their calls (those pass through whole).
     copy_identity_fields({key: msg[key] for key in (MESSAGE_UID, ABSORBED_MESSAGE_UIDS) if key in msg}, entry)

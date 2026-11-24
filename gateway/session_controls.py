@@ -767,8 +767,15 @@ class AuthorityConnection:
             # A micro-compaction merge stays in ``messages`` (an undo target); its originals are what shows.
             display['display_messages'] = display_projection(
                 [row for row in history if not model_only(row)], self.authority.profile_id)
+        transcript = await _resume_transcript(self.authority, ref, snapshot, history, omit)
+        # Hydrate the opt-in footer only after the transcript's deletion fence.
+        # A stock resume has no control-state dependency.
+        from agent.intent_attractor import settings as intent_settings
+        if intent_settings().get('enabled'):
+            from gateway.session_control_actions import _read_control_snapshot
+            display['control'] = await asyncio.to_thread(_read_control_snapshot, self.authority, ref.session_id, scoped=True)
         return {'session_id': ref.session_id, 'stored_session_id': ref.session_id,
-                **await _resume_transcript(self.authority, ref, snapshot, history, omit), **display,
+                **transcript, **display,
                 'running': snapshot.handle.execution_state == 'running',
                 'authority_epoch': snapshot.handle.authority_epoch,
                 'replay_epoch': snapshot.replay_epoch, 'last_sequence': snapshot.last_sequence,

@@ -1542,6 +1542,10 @@ class CLICommandsMixin(CLICommandsSessionToolsMixin, CLIHandoffMixin):
         _cp(f"  {format_dispatch_note(result, prompt)}")
 
     # ---- /goal, /loop, /subgoal -----------------------------------------------------------
+    def _handle_intent_command(self, cmd: str) -> None:
+        from hermes_cli.intent_command import cli_command
+        _cp(cli_command(self, _command_arg(cmd)))
+
     def _handle_goal_command(self, cmd: str) -> None:
         from hermes_cli.gateway_automation import dispatch_goal_command  # /goal draft drafts on the gateway
         from hermes_cli.goals import last_user_message_content

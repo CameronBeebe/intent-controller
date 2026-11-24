@@ -180,6 +180,9 @@ def prepare_iteration(
     if _pre_api_steer:
         _inject_steer_after_newest_tool_result(agent, messages, _pre_api_steer)
 
+    from agent.intent_attractor import refresh_intent
+    refresh_intent(agent, messages)
+
     # One-shot run-budget wrap-up notice at 80% of agent.run_budget_seconds, appended to the
     # newest tool result; off with no budget.
     if getattr(agent, "run_budget_seconds", None):

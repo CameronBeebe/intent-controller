@@ -180,6 +180,9 @@ def spawn_background_process(
         env=env,
     )
     try:
+        from tools.approval_context import execution_check_error
+        if error := execution_check_error():
+            return json.dumps({"error": error, "status": "blocked", "exit_code": -1})
         proc_session = _spawn(
             process_registry, env=env, env_type=env_type, command=command, cwd=effective_cwd,
             effective_task_id=effective_task_id, task_id=task_id, session_key=session_key,

@@ -143,7 +143,8 @@ def apply_stop_gates(
 
     def _continue(nudge: str, flag: str) -> StopGateVerdict:
         """Append the synthetic nudge row and hand the turn back to the loop."""
-        append_message(messages, {"role": "user", "content": nudge, flag: True})
+        append_message(messages, {"role": "user", "content": nudge, flag: True,
+                                  "display_metadata": {"internal_nudge": flag}})
         agent._session_messages = messages
         # Keep the answer only as a budget-exhaustion fallback; clear ``final_response`` so
         # the finalizer can tell this gate from error exits. Mark previewed only if the
@@ -166,7 +167,8 @@ def apply_stop_gates(
             agent, final_msg, messages, conversation_history, "late-LSP interim flush failed"
         )
         # A durable row (no scaffolding flag): it is never stripped, so no sent byte changes later.
-        append_message(messages, {"role": "user", "content": _lsp_note})
+        append_message(messages, {"role": "user", "content": _lsp_note,
+                                  "display_metadata": {"internal_nudge": "late_lsp"}})
         agent._session_messages = messages
         logger.debug("late LSP verdicts delivered before the final answer (%d)", agent._lsp_turn_end_notes)
         return StopGateVerdict(

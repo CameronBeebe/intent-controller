@@ -949,11 +949,45 @@ export interface SessionControlReadResult {
 }
 /** ``_snapshot_control`` — ``revision`` is a hash of the visible state (``""`` when empty); ``updated_at`` is the newest persisted timestamp (``0`` when none). */
 export interface SessionControlSnapshot {
+  intent?: IntentSnapshot | null
   goal: GoalSnapshot | null
   loop: LoopSnapshot | null
   heartbeat: HeartbeatSnapshot | null
   revision: string
   updated_at: number
+}
+export interface IntentSnapshot {
+  revision: number
+  decision: string
+  outcome: string
+  user_edited: boolean
+  paused: boolean
+  extraction_status?: 'awaiting' | 'extracted' | 'unavailable'
+  pending_outcome?: string
+  pending_decision?: string
+  working_status?: 'unformed' | 'unassessed' | 'provisional' | 'validated' | 'user-edited'
+  validation?: string
+  fidelity_probabilities?: Record<string, number>
+  visual_confidence?: number | null
+  fidelity_revision?: number | null
+  fidelity_phase?: string
+  fidelity_target?: string
+  current_request?: string
+  subgoals?: IntentSubgoal[]
+  trajectory?: IntentTrajectoryEvent[]
+}
+export interface IntentSubgoal {
+  id: string
+  text: string
+  origin?: 'inferred'
+  status: 'active' | 'suspended' | 'completed'
+  sources: Record<string, unknown>[]
+  revision: number
+}
+export interface IntentTrajectoryEvent {
+  kind: 'work' | 'assess' | 'correct' | 'wait' | 'blocked' | 'done' | 'revise' | 'uncertain'
+  revision: number
+  label: string
 }
 /** ``methods_session_control.py::_safe_goal_snapshot`` — the frontend-safe GoalState subset. */
 export interface GoalSnapshot {
@@ -5049,7 +5083,7 @@ export interface SessionExportResult {
 }
 export interface SessionAutomationParams {
   session_id: string
-  kind: 'goal' | 'loop' | 'heartbeat'
+  kind: 'goal' | 'loop' | 'heartbeat' | 'intent'
   call: string
   args?: unknown[] | null
   kwargs?: Record<string, unknown> | null
@@ -5281,6 +5315,7 @@ export interface CanonicalSnapshot {
   info: CanonicalSnapshotInfo
   pending_connection?: ConnectionRequestPayload | null
   todo_state?: TodoState | null
+  control?: SessionControlSnapshot | null
   open_requests?: OpenRequestEntry[] | null
 }
 export interface CanonicalPendingAdmission {

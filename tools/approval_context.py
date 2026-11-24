@@ -6,6 +6,7 @@ gate in :mod:`tools.approval`.
 """
 
 import contextvars
+from contextlib import contextmanager
 import logging
 import os
 from agent.i18n import t
@@ -33,6 +34,29 @@ _approval_session_id: contextvars.ContextVar[str] = _ctx("approval_session_id")
 # it onto the non-interactive auto-approve path so a dangerous command runs without the approval callback firing
 # (GHSA-96vc-wcxf-jjff). None = unset → env fallback.
 _hermes_interactive_ctx: contextvars.ContextVar[str | None] = _ctx("hermes_interactive", None)
+
+# Bound by the owning tool dispatch, not inferred from process/session globals.
+_execution_check = contextvars.ContextVar("tool_execution_check", default=None)
+
+
+@contextmanager
+def bound_execution_check(check):
+    """Carry a dispatch's authority fence through approval and backend preparation."""
+    token = _execution_check.set(check)
+    try:
+        yield
+    finally:
+        _execution_check.reset(token)
+
+
+def execution_check_error():
+    check = _execution_check.get()
+    if check is None:
+        return None
+    try:
+        return check()
+    except Exception:  # health: allow BLE001 -- an unreadable authority must not start a command
+        return 'intent authority unavailable; action not executed'
 
 
 def set_hermes_interactive_context(interactive: bool) -> contextvars.Token:

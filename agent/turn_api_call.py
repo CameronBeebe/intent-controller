@@ -73,7 +73,7 @@ def perform_api_call(
     agent: Any, *, api_kwargs: Any, _original_api_kwargs: Any, _llm_middleware_trace: Any,
     _moa_prepared_request: Any, _retry: Any, thinking_spinner: Any, retry_count: Any,
     api_call_count: Any, api_request_id: Any, effective_task_id: Any, turn_id: Any,
-    interrupted: Any,
+    interrupted: Any, messages: Any = None,
 ) -> ApiCallVerdict:
     """Issue the request (see ``_should_stream`` for the streaming decision)."""
     response = None
@@ -89,6 +89,11 @@ def perform_api_call(
         thinking_spinner = stop_thinking_spinner(agent, thinking_spinner)
 
     _use_streaming = _should_stream(agent)
+
+    from agent.intent_protocol import bind_request
+    if not bind_request(agent, messages):
+        thinking_spinner = stop_thinking_spinner(agent, thinking_spinner)
+        return _verdict('break')
 
     def _perform_api_call(next_api_kwargs):
         if agent.api_mode == "codex_responses":

@@ -741,10 +741,26 @@ def _dispatch_authorized_once(
             block_body, block_error_type = {"error": intent_error}, "invalid_declared_intent"
 
     guardrail_decision = None
+    from agent.intent_protocol import dispatch_error
+    if block_body is None:
+        protocol_error = dispatch_error(agent, ref.name)
+        if protocol_error:
+            block_body, block_error_type = {"error": protocol_error}, "intent_protocol"
     if block_body is None:
         guardrail_decision = agent._tool_guardrails.before_call(ref.name, ref.args)
         if guardrail_decision.allows_execution:
             guardrail_decision = None
+
+    # Desktop preparation can wait for consent and for earlier commands to finish.
+    if block_body is None and guardrail_decision is None:
+        from agent.terminal_approval_batch import prepare_current_terminal
+        prepare_current_terminal(ref)
+
+    # Approval may wait while the user edits shared intent. Fence again on return.
+    if block_body is None and guardrail_decision is None:
+        protocol_error = dispatch_error(agent, ref.name)
+        if protocol_error:
+            block_body, block_error_type = {"error": protocol_error}, "intent_protocol"
 
     if block_body is not None or guardrail_decision is not None:
         _advance_start_order()
@@ -759,14 +775,15 @@ def _dispatch_authorized_once(
     elif ref.name == "skill_manage":
         agent._iters_since_skill = 0
 
-    from agent.terminal_approval_batch import prepare_current_terminal
-    prepare_current_terminal(ref)
     _advance_start_order(lambda: _begin_tool_execution(agent, ref, display_index))
     from agent.tool_progress_relay import bound_tool_progress
     from tools.connectors.data_use import collect_data_use
     from tools.mcp_elicitation_form import bound_form_asker  # MCP elicitation asks on this turn's clarify surface
-    with bound_tool_progress(agent.tool_progress_callback, ref.name, ref.call_id), collect_data_use() as data_use, \
-            bound_form_asker(getattr(agent, "clarify_callback", None)):
+    from agent.intent_protocol import execution_check
+    from tools.approval_context import bound_execution_check
+    with (bound_tool_progress(agent.tool_progress_callback, ref.name, ref.call_id),
+          bound_form_asker(getattr(agent, "clarify_callback", None)),
+          bound_execution_check(execution_check(agent, ref.name)), collect_data_use() as data_use):
         try:
             return _run_with_activity_heartbeat(agent, ref.name, lambda: execute(ref.args))
         finally:

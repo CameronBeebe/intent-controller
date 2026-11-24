@@ -585,6 +585,9 @@ def _identity_parts(agent: Any, ctx_len: Optional[int]) -> tuple[list[str], bool
 def _guidance_parts(agent: Any) -> list[str]:
     """Universal + tool-aware + model-gated guidance blocks, each gated by its config.yaml key."""
     parts: list[str] = []
+    if getattr(agent, "_intent_guidance_enabled", False):
+        from agent.intent_feedback import INTENT_GUIDANCE
+        parts.append(INTENT_GUIDANCE)
     if agent.valid_tool_names:
         parts += [
             text for flag, text in (

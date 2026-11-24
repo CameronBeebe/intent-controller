@@ -1190,6 +1190,11 @@ class GatewayTurnProgressMixin:
         from gateway.run import _prepare_gateway_status_message, _redact_gateway_user_facing_secrets, _send_or_update_status_coro
         from gateway.run_status_filter import status_chat_type
         from gateway.warning_notifications import is_warning_status, render_notification
+        if event_type == "intent.update":
+            if getattr(self, "_approval_owner", None) is not None:
+                from gateway.local_viewer_events import publish_control_if_changed
+                publish_control_if_changed(self)
+            return
         ctx = self._ctx
         if ctx.mute_notification_reply or not self._status_live():
             return

@@ -197,6 +197,15 @@ def _db_flush_row(agent, msg: dict, is_current_turn_user: bool) -> dict[str, Any
         and sanitize_context(content).strip() != content.strip()
     ):
         api_content = content
+    display_metadata = msg.get("display_metadata")
+    if (role == "user" and isinstance(msg.get("content"), list)
+            and getattr(agent, "_intent_guidance_enabled", False)):
+        # Durable content is a lossy display projection (e.g. [screenshot]).
+        # Keep bounded text/modality evidence for stable intent-source replay,
+        # not the private attachment payload or an actor-authored interpretation.
+        from agent.intent_attractor import source_content
+        display_metadata = {**(display_metadata or {}),
+                            "intent_source": source_content(msg["content"])}
     # Key order is the divert-JSONL wire order (divert_session_transcript_jsonl).
     row = {
         "role": role, "content": _durable_content(content),
@@ -207,7 +216,7 @@ def _db_flush_row(agent, msg: dict, is_current_turn_user: bool) -> dict[str, Any
         **{k: msg.get(k) for k in _ROW_REASONING_KEYS},
         "_compressed_summary": bool(msg.get(COMPRESSED_SUMMARY_METADATA_KEY)),
         "timestamp": timestamp, "api_content": api_content,
-        "display_kind": _summary_display_kind(msg), "display_metadata": msg.get("display_metadata"),
+        "display_kind": _summary_display_kind(msg), "display_metadata": display_metadata,
         # Load-bearing for restart drain-window recovery dedup.
         "platform_message_id": msg.get("platform_message_id") or msg.get("message_id"),
         "observed": bool(msg.get("observed")),

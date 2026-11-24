@@ -10,11 +10,11 @@ ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 http_client = httpx.Client
 
 
-def evaluate(state, model, key):
+def evaluate(state, model, key, *, assessment_questions=None, labeler=None):
     if not isinstance(model, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,128}", model):
         raise ValueError("invalid_model")
     payload = json.dumps({"model": model, "state": json.dumps(state, ensure_ascii=False, allow_nan=False),
-                          "questions": questions()}, ensure_ascii=False, allow_nan=False).encode()
+                          "questions": assessment_questions or questions()}, ensure_ascii=False, allow_nan=False).encode()
     if len(payload) > 32768:
         raise ValueError("payload_limit")
     deadline = time.monotonic() + 3.0
@@ -30,16 +30,17 @@ def evaluate(state, model, key):
                     raise ValueError("response_limit")
                 if time.monotonic() > deadline:
                     raise httpx.TimeoutException("assessment_deadline")
-    return validate_and_label(json.loads(chunks))
+    data = validate_answers(json.loads(chunks), assessment_questions or questions())
+    return labeler(data) if labeler else validate_and_label(data)
 
 
-def validate_and_label(data):
+def validate_answers(data, expected_questions):
     if not isinstance(data, dict) or not isinstance(data.get("model"), str):
         raise ValueError("invalid_response")
     if not re.fullmatch(r"[A-Za-z0-9._/-]{1,128}", data["model"]):
         raise ValueError("invalid_model")
     answers = data.get("answers")
-    if not isinstance(answers, dict) or set(answers) != set(questions()):
+    if not isinstance(answers, dict) or set(answers) != set(expected_questions):
         raise ValueError("invalid_answers")
     for answer in answers.values():
         if not isinstance(answer, dict) or set(answer) != {"type", "noul"} or answer["type"] != "noul":
@@ -52,6 +53,12 @@ def validate_and_label(data):
             or any(type(usage.get(k)) is not int or not 0 <= usage[k] <= 10**9
                    for k in ("input_tokens", "output_tokens"))):
         raise ValueError("invalid_usage")
+    return data
+
+
+def validate_and_label(data):
+    data = validate_answers(data, questions())
+    answers = data['answers']
     values = {name: answers[name]["noul"] for name in questions()}
     if values["evidence"] < .8:
         label = "unavailable" if values["evidence"] <= .2 else "uncertain"

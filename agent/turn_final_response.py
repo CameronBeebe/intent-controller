@@ -287,6 +287,7 @@ def finish_text_response(
                 _DEGENERATE_FINAL_NUDGE if _continuation_kind == "degenerate"
                 else _CODEX_ACK_CONTINUATION_NUDGE
             ),
+            "display_metadata": {"internal_nudge": _continuation_kind},
         })
         agent._session_messages = messages
         # An acknowledgment is non-final: its text must not suppress iteration-limit
@@ -380,6 +381,11 @@ def finish_text_response(
     if _sg.continue_turn:
         final_response = None
         return _verdict("continue")
+
+    from agent.intent_protocol import finish_candidate
+    if _intent_action := finish_candidate(agent, assistant_message, final_msg, final_response, messages, active_system_prompt, api_call_count):
+        final_response = None
+        return _verdict(_intent_action)
 
     # Plugins rewrite the reply BEFORE it is appended and flushed: SQLite treats a non-blank
     # assistant row as settled, so a transform after this write would reach the user but never

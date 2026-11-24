@@ -69,6 +69,15 @@ def run_tool_round(
             current_turn_user_idx=current_turn_user_idx, result=result,
         )
 
+    from agent.intent_attractor import fence_tool_round
+    intent_fence = fence_tool_round(agent, messages)
+    if intent_fence == 'unavailable':
+        final_response = 'Intent authority is unavailable; no further tools were executed. Please retry after restoring the intent store.'
+        _turn_exit_reason = 'intent_unavailable'
+        return _verdict("break")
+    if intent_fence:
+        return _verdict("continue")
+
     if not agent.quiet_mode:
         agent._vprint(f"{agent.log_prefix}🔧 Processing {len(assistant_message.tool_calls)} tool call(s)...")
 
@@ -209,6 +218,9 @@ def run_tool_round(
     # calling) — cheap RPC-style calls shouldn't eat the budget.
     if {tc.function.name for tc in assistant_message.tool_calls} == {"execute_code"}:
         agent.iteration_budget.refund()
+
+    from agent.intent_feedback import after_tool_round
+    after_tool_round(agent, messages, active_system_prompt, api_call_count)
 
     _ptc = compress_after_tool_results(
         agent, messages=messages, system_message=system_message, user_message=user_message,

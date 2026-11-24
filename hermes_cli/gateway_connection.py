@@ -65,6 +65,8 @@ class SessionState:
         self.session_id = session_id
         self.info: dict = {}
         self.title: str | None = None
+        self.control: dict = {}
+        self.control_listeners: list = []
         self.todo_state: dict | None = None  # the session's {todos, revision}: resume snapshot, then todo.updated
         self.revision = None
         self.subscription_id = None
@@ -103,6 +105,7 @@ class SessionState:
 
     def adopt_snapshot(self, snapshot):
         self.info = dict(snapshot.get("info") or {})
+        self.apply_event("session.control.update", {"control": snapshot.get("control")})
         self.revision = snapshot.get("revision", self.revision)
         self.subscription_id = snapshot.get("subscription_id", self.subscription_id)
         self.execution_generation = snapshot.get("execution_generation", self.execution_generation)
@@ -130,6 +133,10 @@ class SessionState:
                 self.pending_seq += 1
             if payload.get("title"):
                 self.title = payload["title"]
+        elif kind == "session.control.update" and isinstance(payload, dict):
+            self.control = dict(payload.get("control") or {})
+            for listener in list(self.control_listeners):
+                listener()
         elif kind == "todo.updated" and isinstance(payload, dict):
             self.todo_state = {"todos": list(payload.get("todos") or []), "revision": payload.get("revision")}
         elif kind == "session.usage" and isinstance(payload, dict):

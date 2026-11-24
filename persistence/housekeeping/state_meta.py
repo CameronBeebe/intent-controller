@@ -41,6 +41,10 @@ class StateMetaRepository(Protocol):
         """Upsert ``key`` to ``value`` in this scope: a first write creates, a later write overwrites, and a following ``get`` reads the latest value. Empty ``key`` raises ``ValueError`` before any store access; a read-only assembly refuses with a typed store error and writes nothing."""
         ...
 
+    def compare_and_set(self, key: str, expected: Optional[str], value: str) -> bool:
+        """Atomically set a literal key only if its value still equals expected (None means absent)."""
+        ...
+
     def list_prefix(self, prefix: str) -> tuple[StateMetaEntry, ...]:
         """Every key in this scope that starts with ``prefix`` (wildcard characters are literal; ASCII letters match either case, every other character only itself), with its value, in the order the keys were first stored (``set`` on a stored key keeps its place); an unmatched prefix reads an empty tuple. Empty ``prefix`` raises ``ValueError`` before any store access: this is a bounded read, never an enumeration. Read-only assemblies serve this read."""
         ...

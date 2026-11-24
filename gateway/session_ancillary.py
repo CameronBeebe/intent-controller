@@ -500,8 +500,39 @@ def control_snapshot(authority, ref):
     loop = _safe_loop_snapshot(loop_state, deferred_by_goal=bool(
         deferred and loop_state and loop_state.status == 'active'))
     heartbeat = _safe_heartbeat_snapshot(heartbeat_state)
-    return {'goal': goal, 'loop': loop, 'heartbeat': heartbeat,
-            'revision': _snapshot_revision(goal, loop, heartbeat),
+    from agent.intent_attractor import IntentStore, settings
+    from agent.intent_reconciliation import confidence_projection
+    intent = None
+    if settings().get('enabled'):
+        state = IntentStore(store, target).read()
+        pending = (state or {}).get('pending_proposal') or {}
+        proposal = pending.get('proposal') or {}
+        interpretation = (state or {}).get('interpretation') or {}
+        intent = {'revision': state['revision'] if state else 0,
+                  'decision': state['decision'] if state else 'PENDING',
+                  'outcome': state['fields']['outcome'] if state else '',
+                  'user_edited': bool(state and state['origins']['outcome'] == 'user'),
+                  'paused': bool(state and state['paused']),
+                  'extraction_status': ('unavailable' if pending and not proposal else
+                                        'extracted' if proposal or (state and (
+                                            state.get('update_type') or any(state['fields'].values()))) else 'awaiting'),
+                  'pending_outcome': proposal.get('fields', {}).get('outcome', ''),
+                  'pending_decision': pending.get('decision', ''),
+                  'working_status': ('unformed' if not state or not state['fields']['outcome'] else
+                                     'user-edited' if state['origins']['outcome'] == 'user' else
+                                     interpretation.get('status', 'unassessed')),
+                  'validation': interpretation.get('decision', 'UNASSESSED'),
+                  **confidence_projection(state),
+                  'current_request': ((state or {}).get('immediate_request') or {}).get('text', ''),
+                  'subgoals': state.get('subgoals', []) if state else [],
+                  'trajectory': state.get('trajectory', []) if state else []}
+    revision = _snapshot_revision(goal, loop, heartbeat)
+    if intent is not None:
+        import hashlib
+        import json
+        revision = hashlib.sha256((revision + json.dumps(intent, sort_keys=True)).encode()).hexdigest()
+    return {'goal': goal, 'loop': loop, 'heartbeat': heartbeat, 'intent': intent,
+            'revision': revision,
             'updated_at': _snapshot_updated_at(*states)}
 
 

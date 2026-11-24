@@ -1446,6 +1446,9 @@ def _run_foreground(
             # bounded_capture: model-facing output keeps a head/tail window
             # while streaming so a verbose command can't OOM the gateway;
             # internal env.execute() consumers stay unbounded.
+            from tools.approval_context import execution_check_error
+            if error := execution_check_error():
+                return _error_json(error, status="blocked")
             # Only the session's inherited cwd may fall back (the result tells the model); a
             # ``workdir`` the model named is refused, or a typo would run ``rm -f ./*`` a level up.
             result = env.execute(

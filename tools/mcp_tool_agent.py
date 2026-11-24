@@ -366,6 +366,8 @@ def restore_agent_tool_prefix(agent, saved) -> bool:
     process that wrote the pin a pinned Tool Search bridge tool keeps its slot (it is synthesized, never
     registered, exactly as the between-turns refresh keeps it) and a tool new only because its ``check_fn``
     flipped stays out (``_pin_restore_held``)."""
+    from agent.intent_protocol import restore_contract
+    restore_contract(agent, saved)
     pinned, same_code, pinned_defs = _pinned_tool_defs(saved, {_def_name(t): t for t in _agent_tool_defs(agent)})
     if not pinned:
         return False

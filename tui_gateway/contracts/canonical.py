@@ -355,7 +355,7 @@ canonical_method("session.export", params=SessionExportParams, result=SessionExp
 
 class SessionAutomationParams(Params):
     session_id: str
-    kind: Literal["goal", "loop", "heartbeat"]
+    kind: Literal["goal", "loop", "heartbeat", "intent"]
     call: str
     args: list[JsonValue] | None = None
     kwargs: dict[str, JsonValue] | None = None

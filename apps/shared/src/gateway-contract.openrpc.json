@@ -11361,6 +11361,17 @@
             ],
             "default": null
           },
+          "control": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionControlSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "open_requests": {
             "anyOf": [
               {
@@ -22635,6 +22646,220 @@
         ],
         "title": "InstallPhase",
         "type": "string"
+      },
+      "IntentSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "user_edited": {
+            "title": "User Edited",
+            "type": "boolean"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "extraction_status": {
+            "default": "awaiting",
+            "enum": [
+              "awaiting",
+              "extracted",
+              "unavailable"
+            ],
+            "title": "Extraction Status",
+            "type": "string"
+          },
+          "pending_outcome": {
+            "default": "",
+            "title": "Pending Outcome",
+            "type": "string"
+          },
+          "pending_decision": {
+            "default": "",
+            "title": "Pending Decision",
+            "type": "string"
+          },
+          "working_status": {
+            "default": "unformed",
+            "enum": [
+              "unformed",
+              "unassessed",
+              "provisional",
+              "validated",
+              "user-edited"
+            ],
+            "title": "Working Status",
+            "type": "string"
+          },
+          "validation": {
+            "default": "UNASSESSED",
+            "title": "Validation",
+            "type": "string"
+          },
+          "fidelity_probabilities": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Fidelity Probabilities",
+            "type": "object"
+          },
+          "visual_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Visual Confidence"
+          },
+          "fidelity_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fidelity Revision"
+          },
+          "fidelity_phase": {
+            "default": "",
+            "title": "Fidelity Phase",
+            "type": "string"
+          },
+          "fidelity_target": {
+            "default": "",
+            "title": "Fidelity Target",
+            "type": "string"
+          },
+          "current_request": {
+            "default": "",
+            "title": "Current Request",
+            "type": "string"
+          },
+          "subgoals": {
+            "items": {
+              "$ref": "#/components/schemas/IntentSubgoal"
+            },
+            "title": "Subgoals",
+            "type": "array"
+          },
+          "trajectory": {
+            "items": {
+              "$ref": "#/components/schemas/IntentTrajectoryEvent"
+            },
+            "title": "Trajectory",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revision",
+          "decision",
+          "outcome",
+          "user_edited",
+          "paused"
+        ],
+        "title": "IntentSnapshot",
+        "type": "object"
+      },
+      "IntentSubgoal": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "origin": {
+            "const": "inferred",
+            "default": "inferred",
+            "title": "Origin",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended",
+              "completed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "status",
+          "sources",
+          "revision"
+        ],
+        "title": "IntentSubgoal",
+        "type": "object"
+      },
+      "IntentTrajectoryEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "work",
+              "assess",
+              "correct",
+              "wait",
+              "blocked",
+              "done",
+              "revise",
+              "uncertain"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "revision",
+          "label"
+        ],
+        "title": "IntentTrajectoryEvent",
+        "type": "object"
       },
       "InterruptStatus": {
         "enum": [
@@ -37627,7 +37852,8 @@
             "enum": [
               "goal",
               "loop",
-              "heartbeat"
+              "heartbeat",
+              "intent"
             ],
             "title": "Kind",
             "type": "string"
@@ -38604,6 +38830,17 @@
         "additionalProperties": false,
         "description": "``_snapshot_control`` \u2014 ``revision`` is a hash of the visible state (``\"\"`` when empty);\n``updated_at`` is the newest persisted timestamp (``0`` when none).",
         "properties": {
+          "intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntentSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "goal": {
             "anyOf": [
               {

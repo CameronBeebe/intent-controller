@@ -375,6 +375,7 @@ class CLITuiMixin:
         completions_menu) -> list:
         """Ordered children of the root ``HSplit``; override only for full control over ordering
         (wrappers normally override ``_get_extra_tui_widgets`` instead)."""
+        from hermes_cli.cli_intent_toolbar import widget as intent_widget
         ordered = [
             Window(height=0),
             sudo_widget,
@@ -398,11 +399,16 @@ class CLITuiMixin:
             input_rule_bot,
             voice_status_bar,
             completions_menu]
-        if getattr(self, "_modern_layout", False):  # footer under the composer and its completions
+        has_session = getattr(self, "_session_db", None) is not None
+        if getattr(self, "_modern_layout", False) or has_session:
             ordered.append(ordered.pop(ordered.index(status_bar)))
+        if has_session:
+            ordered.append(intent_widget(self))
         return [item for item in ordered if item is not None]
 
     def _tui_spinner_loop(self):
+        from hermes_cli.cli_intent_toolbar import animating as intent_animating
+
         while not self._should_exit:
             if not self._app:
                 time.sleep(0.1)
@@ -413,6 +419,10 @@ class CLITuiMixin:
             if self._command_running:
                 self._invalidate(min_interval=0.1)
                 time.sleep(0.1)
+            elif intent_animating(self):
+                # Reuse this cadence; no intent thread, RPC, or idle redraw timer.
+                self._invalidate(min_interval=0.5)
+                time.sleep(0.2)
             else:
                 # Never repaint the idle prompt on a timer: in non-full-screen mode background
                 # redraws fight tmux/Ghostty/cmux viewport restoration after focus changes and

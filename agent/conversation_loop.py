@@ -1595,7 +1595,8 @@ def _turn_without_loop(agent: Any, s: _LoopState, block_message: str) -> Optiona
     if block_message:
         s.final_response, s._turn_exit_reason = block_message, PRE_LLM_BLOCK_EXIT_REASON
         return _finalize_from_state(agent, s)
-    return _codex_app_server_turn(agent, s) if agent.api_mode == "codex_app_server" else None
+    from agent.intent_protocol import owned_runtime
+    return owned_runtime(agent, s, _codex_app_server_turn) if agent.api_mode == "codex_app_server" else None
 
 
 def _codex_app_server_turn(agent: Any, s: Any) -> Optional[dict[str, Any]]:
@@ -1690,6 +1691,8 @@ def _run_conversation_turn(
         )
     except PreflightCompressionTimedOut as _preflight_timeout_exc:
         return _preflight_timeout_result(agent, _preflight_timeout_exc, conversation_history)
+    from agent.intent_attractor import begin_turn as begin_intent_turn
+    begin_intent_turn(agent, _ctx.messages)
     # Voice turns may run on auxiliary.voice_chat: bound after the prompt/row/compaction were settled
     # against the main model, undone in finalize_turn (and run_conversation's finally on early exits).
     from agent.voice_turn_route import begin_voice_turn_route
@@ -1758,9 +1761,8 @@ def _run_conversation_turn(
                 return _ri.result
             if _ri.action == "continue":
                 continue
-            _v = _run_phase(
-                run_tool_round if s.assistant_message.tool_calls else finish_text_response, agent, s
-            )
+            from agent.intent_protocol import run_candidate
+            _v = run_candidate(agent, s, _run_phase)
             if _v.action == "return":
                 return _v.result
             if _v.action == "break":
@@ -1771,6 +1773,8 @@ def _run_conversation_turn(
             if _run_phase(handle_outer_loop_error, agent, s, e=e).action == "break":
                 break
 
+    from agent.intent_protocol import fail_unfinished
+    fail_unfinished(agent, s)
     result = _finalize_from_state(agent, s)
     if s._compression_timeout_exhausted:
         # Reuse the gateway's context-recovery contract: transcript stays intact while
@@ -1841,6 +1845,8 @@ def run_conversation(
     # Joined before settle_held_final so a held transform sees the lead, unless a collapsed partial already ran it.
     from agent.primary_auth_fallback import lead_failed_turn_with_primary_auth
     lead_failed_turn_with_primary_auth(agent, result)
+    from agent.intent_attractor import finish_turn as finish_intent_turn
+    finish_intent_turn(agent, result)
     settle_held_final(agent, result)
     result = export_current_turn_boundary(agent, result, user_message)
     if isinstance(result, dict):

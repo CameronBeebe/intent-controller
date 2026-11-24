@@ -1215,12 +1215,13 @@ def _init_memory(agent, _agent_cfg, skip_memory, platform, memory_manager=None):
 
 
 def _apply_agent_section(agent, _agent_cfg):
-    # Skills config: nudge interval for skill creation reminders
     agent._skill_nudge_interval = 10
     with suppress(Exception):
         agent._skill_nudge_interval = int(_agent_cfg.get("skills", {}).get("creation_nudge_interval", 10))
 
     _agent_section = _cfg_dict(_agent_cfg, "agent")
+    from agent.intent_protocol import configure
+    configure(agent, _agent_section)
     agent.budget_warning_ratio = normalize_budget_warning_ratio(
         _agent_section.get("budget_warning_ratio")
     )

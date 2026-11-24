@@ -1,9 +1,17 @@
 # Intent Controller
 
-Intent Controller is a harness mod for [Hermes Agent](https://github.com/NousResearch/hermes-agent), maintained as a fork. It adds opt-in checks for how an agent gathers context. It can require the agent to state why it is reading a file and use Jev to assess whether the returned text helps with that objective and the user's task. It also includes a standalone preview for inspecting which passages a context selector keeps or omits.
+Intent Controller is an experimental harness mod for [Hermes Agent](https://github.com/NousResearch/hermes-agent), maintained as a fork. Its objective is sustained, useful progress toward the user's evolving intent—not merely more activity or a better summary of the task:
 
-The file read features are off by default and can be enabled independently.
+**Represent intent concisely → estimate current state from evidence → identify actionable remaining discrepancies → take a useful authorized action → observe and correct → continue until verified completion, a genuine blocker, an appropriate wait, or a user stop.**
 
+Preserve the overarching aim, active subgoals and immediate request while honoring new steering. Minimize unnecessary implementation complexity without weakening the intent or shifting burden to the user. Kolmogorov complexity is an ideal for simplicity, not a computable metric; code is one application, not the limit of the objective. This loop does not grant new permissions, unlimited spending or endless work.
+
+**Implemented now:** opt-in actor-maintained, editable/versioned intent; standing actor guidance and required control transitions; evidence-based completion checks and bounded continuation; advisory Jev fidelity judgments, with source provenance, manual edits/pins and revision fences preserved. Jev advice cannot veto a structurally valid interpretation. The classic CLI exposes the working intent. These mechanisms are experimental: offline checks establish invariants, not an advantage over vanilla Hermes or reliable semantic understanding.
+
+The independent file-read features can require a declared reading objective and assess returned context with Jev. A standalone context preview shows retained/omitted passages. Features are off by default; enabling external assessment exports bounded evidence to the configured backend.
+
+- [Intent loop, activation and current limits](docs/intent-attractor.md)
+- [Verification evidence and limitations](docs/intent-attractor-verification.md)
 - [Declared intent and read assessment](website/docs/developer-guide/read-assessment.md)
 - [Context preview](scripts/CONTEXT_MAP.md)
 

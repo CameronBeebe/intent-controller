@@ -10,7 +10,7 @@ and ``methods_session.py`` (``verification.status``).
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -737,10 +737,47 @@ class HeartbeatSnapshot(Result):
     fire_count: int
 
 
+class IntentSubgoal(Result):
+    id: str
+    text: str
+    origin: Literal['inferred'] = 'inferred'
+    status: Literal['active', 'suspended', 'completed']
+    sources: list[dict[str, Any]]
+    revision: int
+
+
+class IntentTrajectoryEvent(Result):
+    kind: Literal['work', 'assess', 'correct', 'wait', 'blocked', 'done', 'revise', 'uncertain']
+    revision: int
+    label: str
+
+
+class IntentSnapshot(Result):
+    revision: int
+    decision: str
+    outcome: str
+    user_edited: bool
+    paused: bool
+    extraction_status: Literal['awaiting', 'extracted', 'unavailable'] = 'awaiting'
+    pending_outcome: str = ''
+    pending_decision: str = ''
+    working_status: Literal['unformed', 'unassessed', 'provisional', 'validated', 'user-edited'] = 'unformed'
+    validation: str = 'UNASSESSED'
+    fidelity_probabilities: dict[str, float] = Field(default_factory=dict)
+    visual_confidence: float | None = None
+    fidelity_revision: int | None = None
+    fidelity_phase: str = ''
+    fidelity_target: str = ''
+    current_request: str = ''
+    subgoals: list[IntentSubgoal] = Field(default_factory=list)
+    trajectory: list[IntentTrajectoryEvent] = Field(default_factory=list)
+
+
 class SessionControlSnapshot(Result):
     """``_snapshot_control`` — ``revision`` is a hash of the visible state (``""`` when empty);
     ``updated_at`` is the newest persisted timestamp (``0`` when none)."""
 
+    intent: IntentSnapshot | None = None
     goal: GoalSnapshot | None
     loop: LoopSnapshot | None
     heartbeat: HeartbeatSnapshot | None
