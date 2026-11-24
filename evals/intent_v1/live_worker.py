@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import time
+from contextlib import nullcontext
 from types import SimpleNamespace as NS
 from typing import Any
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from evals.intent_v1.semantic import VERSION, INVARIANT_VERSION, task, concrete_
 from evals.intent_v1.live_transport import Actor, Judge, fixture_dispatch, journal
 from evals.intent_v1.run import child_env, save
 from evals.intent_v1.worker import FIXTURE_VERSION
+from evals.intent_v1 import sustained
 from evals.intent_v1.tranche import TASKS, fixtures_for, manifest_for, checks as tranche_checks
 
 
@@ -74,7 +76,8 @@ def run(cell, credentials):
               patch('hermes_cli.plugins.discover_plugins', return_value=None),
               patch('agent.read_assessment_typesafe.http_client', judge.client),
               patch('agent.auxiliary_client.call_llm', side_effect=LiveStop('auxiliary inference forbidden')),
-              patch('agent.title_generator.maybe_auto_title', return_value=None)):
+              patch('agent.title_generator.maybe_auto_title', return_value=None),
+              sustained.observe_stops(cell, plan['case'], actor) if plan['case'] in sustained.TASKS else nullcontext()):
             agent = AIAgent(model=plan['actor_model'], provider='openrouter', api_key='transport-owned-not-a-key',
                             base_url='https://openrouter.ai/api/v1', quiet_mode=True,
                             session_id=cell.name, persistence=db, enabled_toolsets=['file'],
@@ -133,7 +136,8 @@ def run(cell, credentials):
                       {'role': 'evaluator', 'version': VERSION, 'verdict': 'unavailable', 'calls': 0})
         passed = not error and all(checks.values()) and evaluation['verdict'] == 'pass'
         record = {'mode': 'live', 'grader_version': VERSION, 'config': cfg, 'passed': passed, 'checks': checks,
-                  'fixture_version': plan.get('fixture_version', FIXTURE_VERSION), 'invariant_version': INVARIANT_VERSION,
+                  'fixture_version': plan.get('fixture_version', FIXTURE_VERSION),
+                  'invariant_version': plan.get('invariant_version', INVARIANT_VERSION),
                   'harness_valid': censored or (not error and evaluation['verdict'] != 'unavailable'),
                   'outcome': 'censored' if censored else ('complete' if not error else 'infrastructure_invalid'),
                   'incomplete': censored, 'stop_reason': stop_reason,

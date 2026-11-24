@@ -1,6 +1,8 @@
 """Frozen scale tranche 01: short literal user scripts, no simulated users."""
 import json
 
+from evals.intent_v1 import sustained
+
 VERSION = 'intent-v1-scale-tranche-03-file-patch'
 FIBONACCI = '''def fib(n):
     if n < 0:
@@ -88,6 +90,10 @@ TASKS = {
 }
 
 
+TASKS.update(sustained.TASKS)
+FIXTURES.update(sustained.FIXTURES)
+
+
 def fixtures_for(case):
     from evals.intent_v1.worker import FIXTURES as legacy
     return FIXTURES.get(case, legacy)
@@ -99,6 +105,9 @@ def manifest_for(case):
 
 def checks(case, contract, turns, workspace):
     from evals.intent_v1.semantic import ordinary_evidence
+    if case in sustained.TASKS:
+        return {**sustained.facts(case, turns[-1]['messages'] if turns else [], workspace),
+                'turns_completed': len(turns) == 1 and not turns[0].get('failed')}
     fixtures = FIXTURES[case]
     evidence, _ = ordinary_evidence(turns)
     reads = {t['arguments'].get('path') for e in evidence for t in e['tools']

@@ -7,9 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+from evals.intent_v1.sustained import TASKS as WORK_CASES
+
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ('topic_swap', 'stale_edit', 'overhead')
-LIVE_CASES = ('sustained_review', 'artifact_fix', 'scope_expansion')
+LIVE_CASES = ('sustained_review', 'artifact_fix', 'scope_expansion', *WORK_CASES)
 LIVE_BLOCKERS = [
     'Use separate --live mode with explicit --actor-budget-usd (at most $5) and retained --spend-root',
     'Live requires successful scoped auth and fresh catalog preflight',
@@ -18,10 +20,11 @@ LIVE_BLOCKERS = [
 ]
 
 
-def config(arm):
-    return {'enabled': arm != 'A', 'judge_enabled': arm == 'C',
-            'semantic_continuation': False, 'provider': 'typesafe', 'model': 'offline-judge',
-            'max_assessments': 20, 'max_continuations': 0, 'feedback_interval': 1}
+def config(arm, *, continuation_comparison=False):
+    limit = 2 if arm == 'D' or (arm == 'C' and continuation_comparison) else 0
+    return {'enabled': arm != 'A', 'judge_enabled': arm in ('C', 'D'),
+            'semantic_continuation': arm == 'D', 'provider': 'typesafe', 'model': 'offline-judge',
+            'max_assessments': 20, 'max_continuations': limit, 'feedback_interval': 1}
 
 
 def save(path, data):
@@ -54,7 +57,7 @@ def main(argv=None):
     parser.add_argument('--cell-timeout', type=int, default=240, help='Killable cell seconds (1..900; default 240)')
     parser.add_argument('--spend-root', type=Path, help='Existing authorized artifact tree; reuse across runs, not a ledger')
     parser.add_argument('--cases', nargs='+', choices=CASES + LIVE_CASES, default=list(CASES))
-    parser.add_argument('--arms', nargs='+', choices=list('ABC'), default=list('ABC'))
+    parser.add_argument('--arms', nargs='+', choices=list('ABCD'), default=list('ABC'))
     args = parser.parse_args(argv)
     if args.live or args.preflight_live:
         if not 1 <= args.max_iterations <= 128 or not 1 <= args.cell_timeout <= 900:
@@ -65,6 +68,8 @@ def main(argv=None):
             parser.error('live requires --actor-budget-usd and --spend-root before any inference')
         from evals.intent_v1.live_driver import run_live
         return run_live(args, parser)
+    if 'D' in args.arms:
+        parser.error('arm D is an explicit live comparison, not a scripted baseline')
     if any(c in LIVE_CASES for c in args.cases):
         parser.error('scale tranche cases require --live; no scripted actor substitutes')
     out = args.out.resolve()

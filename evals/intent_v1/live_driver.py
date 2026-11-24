@@ -9,6 +9,7 @@ import time
 from evals.intent_v1.live import actual_spend, money
 from evals.intent_v1.semantic import VERSION, INVARIANT_VERSION, task, questions
 from evals.intent_v1.worker import FIXTURE_VERSION
+from evals.intent_v1 import sustained
 from evals.intent_v1.tranche import TASKS, VERSION as TRANCHE_VERSION, fixtures_for, manifest_for
 from evals.intent_v1.live_auth import preflight, JUDGE_MODEL
 from evals.intent_v1.run import ROOT, config, child_env, save
@@ -47,22 +48,25 @@ def run_live(args, parser):
     case = args.cases[0]
     fixtures = fixtures_for(case)
     fixture_version = TRANCHE_VERSION if case in TASKS else FIXTURE_VERSION
+    if case in sustained.TASKS:
+        fixture_version = sustained.VERSION
+    invariant_version = sustained.VERSION if case in sustained.TASKS else INVARIANT_VERSION
     manifest = manifest_for(case)
     common = {'actor_model': args.actor_model, 'actor_canonical_slug': report['catalog']['canonical_slug'],
               'actor_metadata': report['catalog'],
               'fixture_version': fixture_version, 'fixture_manifest': manifest,
-              'invariant_version': INVARIANT_VERSION,
+              'invariant_version': invariant_version,
               'spend_root': str(args.spend_root.resolve()), 'actor_budget_usd': str(cap),
               'max_output_tokens': 1024, 'max_iterations': args.max_iterations,
               'deadline_epoch': deadline}
     cells = []
     for arm in args.arms:
-        cfg = config(arm)
+        cfg = config(arm, continuation_comparison=case in sustained.TASKS or 'D' in args.arms)
         cfg.update(model=JUDGE_MODEL, max_assessments=None)
         cells.append({'case': args.cases[0], 'task': task(args.cases[0]), 'arm': arm, 'config': cfg, **common})
     plan = {'mode': 'live', 'grader_version': VERSION, 'evaluator_questions': questions(),
             'fixture_version': fixture_version, 'fixture_manifest': manifest,
-            'invariant_version': INVARIANT_VERSION,
+            'invariant_version': invariant_version,
             'fixtures': fixtures, 'source_sha': git('rev-parse', 'HEAD').strip(),
             'status': git('status', '--porcelain'), 'cells': cells,
             'source_files': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
